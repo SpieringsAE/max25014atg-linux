@@ -161,8 +161,7 @@ static int max25014_check_errors(struct max25014 *maxim) {
  * 4. set setting register
  * 5. enable the backlight
  */
-static int max25014_configure(struct max25014 *maxim)
-{
+static int max25014_configure(struct max25014 *maxim) {
 	struct max25014_platform_data *pdata = maxim->pdata;
 	maxim->cfg = &default_bl_config;
 	int ret = 0;
@@ -191,8 +190,7 @@ static int max25014_configure(struct max25014 *maxim)
     return ret;
 }
 
-static int max25014_update_status(struct backlight_device *bl_dev)
-{
+static int max25014_update_status(struct backlight_device *bl_dev) {
 	struct max25014 *maxim = bl_get_data(bl_dev);
 
 	if (bl_dev->props.state & BL_CORE_SUSPENDED)
@@ -208,8 +206,7 @@ static const struct backlight_ops max25014_bl_ops = {
 	.update_status = max25014_update_status,
 };
 
-static int max25014_backlight_register(struct max25014 *maxim)
-{
+static int max25014_backlight_register(struct max25014 *maxim) {
 	struct backlight_device *bl;
 	struct backlight_properties props;
 	struct max25014_platform_data *pdata = maxim->pdata;
@@ -235,8 +232,7 @@ static int max25014_backlight_register(struct max25014 *maxim)
 }
 
 static ssize_t max25014_get_chip_id(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
+				struct device_attribute *attr, char *buf) {
 	struct max25014 *maxim = dev_get_drvdata(dev);
 
 	return scnprintf(buf, PAGE_SIZE, "%s\n", maxim->chipname);
@@ -254,8 +250,7 @@ static const struct attribute_group max25014_attr_group = {
 };
 
 #ifdef CONFIG_OF
-static int max25014_parse_dt(struct max25014 *maxim)
-{
+static int max25014_parse_dt(struct max25014 *maxim) {
 	struct device *dev = maxim->dev;
 	struct device_node *node = dev->of_node;
 	struct max25014_platform_data *pdata;
@@ -298,8 +293,8 @@ static int max25014_parse_dt(struct max25014 *maxim)
 	return 0;
 }
 #else
-static int max25014_parse_dt(struct max25014 *maxim)
-{
+static int max25014_parse_dt(struct max25014 *maxim) {
+    dev_err(maxim->dev, "CONFIG_OF not configured, unable to parse devicetree");
 	return -EINVAL;
 }
 #endif
@@ -335,7 +330,7 @@ static int max25014_probe(struct i2c_client *cl, const struct i2c_device_id *id)
 		gpiod_set_value_cansleep(maxim->enable,1);
 
 		/*
-		 * MAX25014 datasheet says startup time is maxim 2 ms
+		 * MAX25014 datasheet says startup time is max 2 ms
 		 */
 		usleep_range(2000, 2500);
 	}
@@ -350,26 +345,26 @@ static int max25014_probe(struct i2c_client *cl, const struct i2c_device_id *id)
     if (ret) {
 		goto disable_vddio;
 	}
-    dev_err(maxim->dev, "6\n");
+
     ret = max25014_configure(maxim);
 	if (ret) {
 		dev_err(maxim->dev, "device config err: %d", ret);
 		goto disable_vddio;
 	}
-    dev_err(maxim->dev, "7\n");
+
 	ret = max25014_backlight_register(maxim);
 	if (ret) {
 		dev_err(maxim->dev,
 			"failed to register backlight. err: %d\n", ret);
 		goto disable_vddio;
 	}
-    dev_err(maxim->dev, "8\n");
+
 	ret = sysfs_create_group(&maxim->dev->kobj, &max25014_attr_group);
 	if (ret) {
 		dev_err(maxim->dev, "failed to register sysfs. err: %d\n", ret);
 		goto disable_vddio;
 	}
-    dev_err(maxim->dev, "9\n");
+
 	return 0;
 
 disable_vddio:
