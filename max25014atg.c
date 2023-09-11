@@ -22,10 +22,10 @@
 #include <linux/of_device.h>
 
 #define DEFAULT_BL_NAME		"lcd-backlight"
-#define MAX_BRIGHTNESS		(0xffU)
+#define MAX_BRIGHTNESS		(100U)
 #define MIN_BRIGHTNESS		(0U)
 #define TON_MAX             (130720U)   //@153Hz
-#define TON_STEP            (513U)      //@153Hz
+#define TON_STEP            (1307U)     //@153Hz
 #define TON_MIN             (0U)
 
 struct max25014;
@@ -51,7 +51,7 @@ struct max25014 {
 static struct max25014_config default_bl_config = {
 	.iset = MAX25014_ISET_DEFAULT_100,
     .strings = {1U,1U,1U,1U},
-    .initial_brightness = 127U,
+    .initial_brightness = 50U,
 };
 
 static const struct regmap_config max25014_regmap_config = {
@@ -85,9 +85,9 @@ static uint8_t strings_mask(uint8_t *strings){
 static int max25014_register_control(struct regmap *regmap, uint32_t brt) {
     uint32_t reg = TON_STEP * brt;
     //18 bit number lowest 2 bits in first register, next lowest 8 in the L register, next 8 in the H register 
-    regmap_write(regmap, MAX25014_TON_1_4_LSB, reg & 0b00000011U);
-    regmap_write(regmap, MAX25014_TON1L, (reg >> 2) & 0b11111111U);
-    return regmap_write(regmap, MAX25014_TON1H, (reg >> 10) & 0b11111111U);
+    regmap_write(regmap, MAX25014_TON_1_4_LSB, reg & 0b00000011);
+    regmap_write(regmap, MAX25014_TON1L, (reg >> 2) & 0b11111111);
+    return regmap_write(regmap, MAX25014_TON1H, (reg >> 10) & 0b11111111);
 }
 
 static int max25014_check_errors(struct max25014 *maxim) {
@@ -138,16 +138,17 @@ static int max25014_check_errors(struct max25014 *maxim) {
     ret = regmap_read(maxim->regmap, MAX25014_DIAG, &val);
     if (ret != 0)
         return ret;
-    if (val>0) {
+    // 0b100 is the HW_RST bit, this one always starts at 1 and does not indicate an error
+    if (val>0 && val != 0b100) {
         if (val & 0b1)
             dev_err(maxim->dev, "Overtemperature shutdown\n");
         if (val & 0b10)
             dev_warn(maxim->dev, "Chip is getting too hot (>125C)\n");
-        if (val & 0b100)
-            dev_err(maxim->dev, "Boost converter overvoltage\n");
         if (val & 0b1000)
-            dev_err(maxim->dev, "Boost converter undervoltage\n");
+            dev_err(maxim->dev, "Boost converter overvoltage\n");
         if (val & 0b10000)
+            dev_err(maxim->dev, "Boost converter undervoltage\n");
+        if (val & 0b100000)
             dev_err(maxim->dev, "IREF out of range\n");
         return -EIO;
     }
@@ -283,8 +284,8 @@ static int max25014_parse_dt(struct max25014 *maxim) {
         return -EINVAL;
     }
     
-    if (pdata->initial_brightness < 0 || pdata->initial_brightness > 255) {
-        dev_err(dev, "Invalid initial brightness, should be a value from 0-255, entered was %d\n",pdata->initial_brightness);
+    if (pdata->initial_brightness < 0 || pdata->initial_brightness > 100) {
+        dev_err(dev, "Invalid initial brightness, should be a value from 0-100, entered was %d\n",pdata->initial_brightness);
         return -EINVAL;
     }
 
@@ -364,6 +365,8 @@ static int max25014_probe(struct i2c_client *cl, const struct i2c_device_id *id)
 		dev_err(maxim->dev, "failed to register sysfs. err: %d\n", ret);
 		goto disable_vddio;
 	}
+
+    dev_info(maxim->dev, "max25014 probed.\n");
 
 	return 0;
 
