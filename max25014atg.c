@@ -330,9 +330,7 @@ static int max25014_probe(struct i2c_client *cl, const struct i2c_device_id *id)
     if (maxim->enable) {
 		gpiod_set_value_cansleep(maxim->enable,1);
 
-		/*
-		 * MAX25014 datasheet says startup time is max 2 ms
-		 */
+		/* MAX25014 datasheet says startup time is max 2 ms */
 		usleep_range(2000, 2500);
 	}
     
